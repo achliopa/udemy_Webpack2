@@ -112,5 +112,59 @@ var entryPointIndex = 1;
 myModules[entryPointIndex]();
 ```
 
-* 
+* on the top of bundle.js an array is created. the array contains 2 functions. each function wraps the code that was in each file.
+* after the array a variable called  entryPointIndex is created with initial value of 1. this variable points to the index in the array of our entrypoint module.(index.js)
+* webpack then lokks into the module array with the index to invoke the code of the entry file
+* now the 2nd function is executed. we see that the inmport of the index.js file is represented as a reference to the array element that contains the code of the imported file (sum.js), the code gets executed.
+* all webpack code is vanilla js to run on all browsers.
 
+### Lecture 13 - Running the App
+
+* now we will see how to run the app in the browser.
+* to run our code in the browser we will create an html file with the sole purpose of running our bundle.js bundle code file.
+* we call the file index.html in root project folder.we put html5 boilerplate with a script tag poiting to the bundle.js
+* we can just opent he fil ein browser or launch a webserver like live-server.
+
+## Section 3 - Handling Project Assets
+
+### Lecture 14 - Intro to Loaders
+
+* module loaders are used to do pre-processing on our files before they are added to bundle.js
+* loaders are commonly used to implement transpiling from ES2015 code, setyp the use of Babel, load images, CSS code and the like.
+* first we will add the Babel loader for transpilling JS from ES2015 to ES5
+* we will add Babel to the project and wire it up as module loader (we will need 3 different modules for that):
+	* babel-loader : teaches babel how to work with webpack
+	* babel-core : knows how to take up code, parse it and generate some output files
+	* babel-preset-env : ruleset for telling babel exactly what pieces of ES2015/6/7 syntax to look for, and how to turn it into ES5 code.
+* babel is very modular and has support for many build systems.
+* we npm install them all as dev dependencies in our project `npm install --save-dev babel-loader babel-core babel-preset-env`
+
+### Lecture 15 - Babel Setup for ES2015
+
+* loaders are used to enhance the behaviour of webpack. they are individual libs that can run on different files in our project.
+* now that we installed babel we have to tell webapack how to use it.
+* to add the loader we first going to add it in our webpack config file and then tell webpack on which files it should use this loader on. most of the time we bind a loader witha type of file
+* babel shoudl operate only on js files
+* we add a loader as follows: we add a new property object in our config object called modules. there we add an array of rules. each rule (loader) is an object which is in fact a preprocessor for files added in the bundle. each rule/loader config object has a set of properties.
+	* use: sets the loader module to be used for th rule
+	* test: sets a regex to filter the project files where the loader will be applied to 
+* babel loader loads babel to webpack but babel to be configured needs a config file of its own in project root folder called `.babelrc`
+* this file uses json syntax and sets presets: property as an array of modules to babel to enhance its transpiling capabilities. these extensions are also installed as npm modules in the project
+
+```
+{
+	"presets": ["babel-preset-env"]
+}
+```
+* to test babel loader we convert some code in our source files to ES6
+* we sould see in the bundle.js the conversion to common JS (ES5)
+
+### Lecture 17 - Refactor to ES2015 Modules
+
+* nothing new. change-build-run
+
+### Lecture  18 - Handling CSS with Webpack
+
+* The next loader we will look at is one that is equally important for many projects. Styles and CSS loaders (SCSS???) it will allow to use CSS style in our project in a modular way bundled with Webpack
+* modularity in CSS helps the developer
+* for testing we add an image_vviewer.js file to the project
