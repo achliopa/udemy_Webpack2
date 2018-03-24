@@ -258,4 +258,36 @@ to test we replace remote image fetch wtith the small and run our server. succes
 
 ### Lecture 25 - Intro to Code Splitting
 
+* in the simple use case that our up contains a login form and a dashboard we would like not to load the complete bundle.js when we come to the site. code splitting in webapck splits the bundle.js in multiple files and allows us to perogramaticaly decide when to load the individual files in our codebase. this improves the performance o fthe app as what is needed gets loaded just in time. 
+
+### Lecture 26 - Codesplitting in practice
+
+*  we refactor the code of the small sample project to implement a scaledd own version of the use case we discussed to showcase the concept of codesplitting
+	* index.js : entry point. render a button with click handler. imports 'image_viewer' after button gets clicked
+	* image_viewer.js : renders the image
+* we implment the index.js adding a button and its handler.
+
+### Lecture 27 - On-Demand Code Loading
+	
+* in the button onclick handler we add `System.import('./image_viewer');`
+* this method is ES2015 js method. it fetches js modules on demand at runtime from the server and it moves execution to that module. so this breaks the typical approach that all js is loaded at client at init
+* if the imported module we are exectuing with he system method jas its own imports these are lpulled to client aswell
+* the system import method is asynchronous call as it goes babk to the server so it return a promise.
+* to show the interaction we export the code that puts the image on screen in image_viewer.js
+
+### Lecture 28 - System Import Calls
+
+* we build our project and run the server. we luch console and hit button. we console loged the resolve object of the system call promise which we called module.
+* we see that is an object with a default() method as single accessible property. this default() is the default export we implemented puting the image rendering code inside. so we expect that if we call module.default(); in the console the image will appear
+* we refresh the page and look into sources tab. when we launch index.js only bundle.js gets loaded. when we click the mouse 0.bundle.js is loaded as well
+* we look into these 2files in sublime.
+* bundle.js is smaller and a JSONP callback for chunk liading used
+* SO whe we use code splitting with SYstem.import() method inour code webpack adds logic to go and fetch modules from server.
+* the code of image rendering is in 0.bundel.js
+* we replace console.log(module) to module.default(); an we see the image on screen.
+
+## Section 5 - Applying Webpack to a Real Project
+
+### Lecture 29 - A Real World Project
+
 * 
