@@ -167,4 +167,95 @@ myModules[entryPointIndex]();
 
 * The next loader we will look at is one that is equally important for many projects. Styles and CSS loaders (SCSS???) it will allow to use CSS style in our project in a modular way bundled with Webpack
 * modularity in CSS helps the developer
-* for testing we add an image_vviewer.js file to the project
+* for testing we add an image_vviewer.js file to the project to show an image on the html doc. we will syle it with an image_viewer.css file.
+* the code in image_viewer.js is vanill js dom manipulation code (create a new DOM element and append it to body)
+* we import image_view.js in index with `import './image_viewer';` as we dont want to use any code , just to invoke it.
+* importing js files is the way to tell webpack to put them in the bundle through the  execution chain
+*  there are ways to run the build script automatically. but as we do wenbpack config changes we have to respawn the build to use them. if we modify just our codebase we run webpack build in auto
+
+### Lecture 19 - THe Style and CSS Loaders
+
+* we have th module that puts the imag ein the page ready. now we will add CS to syle it and find a way to use the loader to put the CSS in our bundle with webpack
+* we will impor css file in our js code.
+* we make a new dir called styles inour project troot folder. we add a image_viewer.css file in there.
+* in React its common to put css in the same folder as js files.
+* we import the css in our js file as a js module. we just have to add the filetype `import '../styles/image_viewer.css';` and use the relativ epath to the file
+* to use css in out bundle through webpack we will install 2 loaders with npm
+	* css-loader: knows how to deal with css imports
+	* style-loader: takes css imports and adds them to the HTML document
+* `npm install --save-dev css-loader style-loader`
+* we add another rule in the module rules section of our webpack config file. webpack rules can support multiple loaders in one step
+* loaders are added to the rule right to left. so order matters `use: ['style-loader','css-loader']` output of css goes to style loader. we also add the test prop with the regex file filter.
+
+### Lecture 20 - Loaders are Tricky
+
+* we run npm run build and run our werver to see the styles on screen. we inspect the page and we see that styles are added in the html head tag as a styles tag inline without a file import.
+* we look in bundle.js to find out how css was injected in the html head tag.
+* we see that css code is injected in bungle.js as a string, there are also methods like addSytlesToDom. so styles loader manual injects css code from modules into html
+* it is questionable if we want to load our css in this way
+
+### Lecture 21 - THe Extract Text Plugin
+
+* loading css in a separate file is lot faster than load js and css in one file.
+* we install a new lib `npm install --save-dev extract-text-webpack-plugin@2.0.0-beta.4`
+* we will make a rule in config using this loader/plugin that will take all files specified wwiht test: and bundle them in one file in our outpust directory
+* this llibrary gets added up in config diferently than the others
+* we import the library in config `const ExtractTextPlugin = require('extract-text-webpack-plugin');`
+* we replace use property in our css rule with the legacy property loader passing a library function extract() which gets a config object argument with the property loader which has value of css-loader
+
+```
+			{
+				// use: ['style-loader','css-loader'],
+				loader: ExtractTextPlugin.extract({
+					loader: 'css-loader'
+				}),
+				test: /\.css$/
+			}
+```
+
+* this method of adding rules is  a webpack plugin. loaders act as a preprocessor before bundling a file. plugins work outside the webpack pipeline preventinf files from being added to the bundle. we want this here as we want to create a separate file
+* under modules section we add another section called plugins. there in the array we create new instance of ExtractTextPlyugin passing the param 'style.css' which is the name of the file we want to create. what it does is that takes whichever files the loader grabbed ans saves them into this file
+* we run npm run build. style.css is created. we add it in html with a link tag. `<link rel="stylesheet" href="./build/style.css">`. run the server ans we see the style taking effect.
+
+### Lecture 22 - Handling Images with Webpack
+
+* we will use another loader to process images in our project. in fact we will use 2 loaders chained to implement the followinf pipeline for images in webpack. `IMAGE -> resize the image w/ imae-webpack-loader -> [is the image small?] -> url-loader -> [is the image small? => include the image in bundle.js as  raw data] [is the image big? => include the raw image in the output directory]`
+* to add an image to a file we will use 2 separate loaders. the first compresses the image. then depending on the compacted size the second loader chooses what to do. 
+* we this approach we have performance benefits for small images but we need to figure out how to include the image if its a larger side so existing as a separate file.
+
+we npm install them as  dev dependencies `npm install --save-dev image-webpack-loader url-loader`
+* we add a new rule for images in config file. we add a type property (which filetypes the loader will look for) with a test regex. the regex is more complex to handle various image filetypes. we the add the use property like in css forst approach with 2 loaders keeping the order of execution right to left
+* this time we have to configure the loaders as url-loader must have a threshold to decide which images go to bundle.js and which are kept as files. to configure a loader we replace the string with an object. the object is the following
+
+```
+					{
+						loader: 'url-loader',
+						options: { limit: 40000 }
+					}
+```
+
+*  we add the options prop to se tthe limit
+
+### Lecture 23 - Automatic Image Compression
+
+* we get some images and we include them in the project. we add a folder *assets* in project root and add 2 images
+* we import both images in image_viewer.js using ES6 import syntax (like css) `import small from '../assets/small.jpg';` this time we import the image as a js object
+* we run npm run build. we get error so we check github. we downgrade image-webpack-loader to 3.6.0 small passes but big throws error. it asks for file-loader so we install it `npm install --save-dev file-loader` and run again.
+* success . we also see a new compressed jpg in build dir. we check and is the large image compressed. 
+* we see in bundle.js to see what happened to the small image we see thje code `module.exports = "data:image/jpeg;base64,/9j/4AAQSk...` which contains the image binary. it is encoded as a base64 string.
+to test we replace remote image fetch wtith the small and run our server. success. if we replace small with big we dont see the image (external resource). 
+* we see =in chrome console and see that it cannot find the big image. the hash name it searches is correct but in the wrong folder (root).
+* a hack is to use string interpolation to add the build folder in the path `image.src = './build/'+big;` but this is not  the way to do it. we should have auniform way to refer images in the code (no prefixes)
+
+### Lecture 24 - Public Paths
+
+* to fix the issue with the bi pickture path we go t webpack config
+* in the output section we will add one more property named *publicPath* given the va; 'public/'
+* we rebuild our project and start the server. now the big picture appears on screen an if we inspect we will see that without hardoding the path it has the correct path of the image in thee build folder we jist added in teh config.
+* what publicPath does? the url-loaders purpose is to take the image and copy it to our build folder. url-loader emits the url of the file with 'output.publicPath' prepended to the URL. also copies the image from dev folder to the build folder.
+
+## Section 4 - Building for Performance with Webpack
+
+### Lecture 25 - Intro to Code Splitting
+
+* 
