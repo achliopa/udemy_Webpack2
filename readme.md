@@ -290,4 +290,161 @@ to test we replace remote image fetch wtith the small and run our server. succes
 
 ### Lecture 29 - A Real World Project
 
+* we download a react project to play with and npm install in it and run the server to see it. if we build it breaks (missing loader) if we run we see nothing
+
+### Lecture 30 - Setting Up Babel
+
+* we see similar project structure. in package.json we have the loaders for babel and css but ebpackconfig is empty
+* we add the babel loader in our config creating a modules section and a set of rules
+
+```
+  		{
+  			use: 'babel-loader',
+  			test: /\.js$/,
+  			exclude:  /node_modules/
+  		}
+```
+
+* the xclude property is added to NOT aplly babel on node modules. as it is not needed and wastes resources.
+
+### Lecture 31 - Minimum Webpack Config
+
+* we add inproject root folder .babelrc file to config babel. in the json file we add the presets of babel: babel-preset-env and react to traspile react and jsx
+* we add a rule for css. we dont use extractTextPlugin like in last project but css loader that injects css into bundle.js
+
+```
+  		{
+  			use: ['style-loader','css-loader'],
+  			test: /\.css$/
+  		}
+```
+
+* we get size limit warning from webpack. we run our server and SUCCESS the app launches
+* bundle.js is 3.5MB. we have to reduce it.
+* this app has distinct parts.
+
+### Lecture 32 - Vendor Asset Caching
+
+* webpack helps control how we serve js to the client, it cannot speed up the app natively.
+* in the give app we can split our code base into 2 chunks: Our Code (Index.js, SearchList.js ) and Vendor Code/libs:(React.js,Lodash.js)
+* We will use resource caching, ask the browser if he has a resource stored before downloading. for common vendor packages (like React) chances are he has them (everybody uses Facebook)
+* This is asset caching
+
+### Lecture 33 - More on Vendor Caching
+
+* In our app we do Vendor Dependency Updates (vendors do fixes in resleases, new feats). But these updates are done infrequently and in a controlled way
+* Our code is updated much more frequently
+* We take this into consideration when deciding what to cache
+	* First Visit: we downlad all(bundle.js (only our code) and vendor.js)
+	* Second Visit: we download only bundle.js (only our code) not vendor.js
+* Browser decides what to download depending on his cache and the versioning of the bundles (webpack takes care of it)
+
+### Lecture 34 - Refactoring for Code Splitting
+
+* up to now we did code splitting with System.import() call
+* now we will do it with webpack so that before it parses code it knows what to do
+* we do it through System.import to split our code base
+* we start by deleting entry param from webpack config. we replace it with an object as we wont have a single entry point
+* we replace entry with an array of two entry points. bundle which uses the same entry point for our own codebase and vendor for the vendor libraries. 
+* the vendor libraries is an array with the libs we want in the second bundle. here we cp all the libs from our package.json dependencies.
+* to create the 2 bundles we do ke interpolation in the output objectfilename propery to enter bundle or vendor.
+
+```
+const VENDOR_LIBS = [
+	"faker",
+    "lodash",
+    "react",
+    "react-dom",
+    "react-input-range",
+    "react-redux",
+    "react-router",
+    "redux",
+    "redux-form",
+    "redux-thunk"
+];
+...
+  entry: {
+  	bundle: './src/index.js',
+  	vendor: VENDOR_LIBS
+  },
+  output: {
+    path: path.join(__dirname, 'dist'),
+    filename: '[name].js'
+  },
+```
+
+### Lecture 35 - Effect of Code Splitting
+
+* in our new build we see that bundle and vendor are big in size
+* this happens because common libs are imported in out source files. webpack does not know to distinguish them so it adds them in both bundles.
+* to tell webpack to remove them from our code bundle even if they are imported in the source files we use CommonsChunkPlugin a webpack plugin
+* we add it as aplugin as we want to affect the whole input not some type of files like loaders do. we add a new section to the config file called plugins and add this plugi passing a config object with the name: vendor. so it exludes from bundle what inide vendor
+
+```
+  plugins: [
+  	new webpack.optimize.CommonsChunkPlugin({
+  		name: 'vendor'
+  	})
+  ]
+```
+
+* the result is to reduce size of bundle to 300kB
+
+### Lecture 36 - TroubleShooting Vendor Bundles
+
+* we run our up but the app does not load. we get an error in console complaining for missing webpackJsonp
+* this happends because we have not included vendor.js in out html script tags. we can do it but anytime we modify our code splitting or create new bundles we have to maintain this dependency. we would like this to happen automatically. for this reason we use html-webpack -plugin
+* we install it `npm install --save-dev html-webpack-plugin`
+* we add it into webpac vconfig plugin section
+
+```
+  	new HtmlWebpackPlugin({
+  		template: 'src/index.html'
+  	})
+```
+
+* we move index.html into src and use it as a template. we remove all scripts as the plugin will add them in the build
+* we run build, a new index.html is createdin dist/ with the script tags added. we run it and it WORKS
+
+### Lecture 37 - Chunk Hashing for Cache Busting
+
+* we need to make clear to the browser when our bundles have cahne so as to falilitate caching. we do that by add ing a hash to the name. this is done by adding a second part to their name, the chunkhash
+
+```
+  output: {
+    path: path.join(__dirname, 'dist'),
+    filename: '[name].[chunkhash].js'
+  },
+```
+
+* to facilitate vendor bundle hashing and the lib exclusion from bundle.js we need to modify the commonschunkplugin config
+
+```
+  	new webpack.optimize.CommonsChunkPlugin({
+  		name: ['vendor','manifest']
+  	}),
+```
+
+* this will create an extra manifest.js file in our dist.
+* in our devetools we should disable caching to facilitate development
+
+### Lecture 38 - Cache Busting Wrapup
+
+* hash depends on the contents of the file. so if it does not change contents it stays the same
+* to test it we change our project codebase and rebuild. bundle has changes and vendor hash stays the same
+* html webpack plugin is smart enough to include the latest bundle hashes to the script tags of our index.html
+* the only issue left to remove old hashed bundles from dist
+
+### Lecture 39 - Cleaning Project Files
+
+* we see that bundle files keep piling up in each build. 
+* we add an ohter module called rimraf `npm i --save-dev rimraf`
+* this is a tool of compatibilyt between unix and win. as we will use the unix command of rm to remove old bundles and win cmd does not suppor it. to make our project os agnostic we add this tool. use rimraf which translates to the suitable command in each os/
+* we add a script to our package.json `"clean": "rimraf dist"` to clean all dist folder before build. 
+* we also change our build script to precede it with the clean command `"build": "npm run clean && webpack"`
+
+## Section 6 - Webpack Dev Server
+
+### Lecture 40 - Intro to Webpack Dev Server
+
 * 
