@@ -447,4 +447,124 @@ const VENDOR_LIBS = [
 
 ### Lecture 40 - Intro to Webpack Dev Server
 
-* 
+* up to now we run webpack manually to do our build and then start our server to test.
+* we will use now the webpack-dev-server. we will start it once and we will monitor our codefor changes. whenever we save achange it will update only that change in the bundle. so builds will be faster
+* also we will not manually load our html to the browser. we will connect to the dev-server and get access always to the up-to-date build for testing
+*webpack-dev-server is for testing the client side of our single page application. as it is a non configurable server unlike a node backend app with access to apis dbs etc.
+
+### Lecture 41 - Gotchas with Webpack Dev Server
+
+* we install webpack dev server as npm dep. `npm install --save-dev webpack-dev-server@2.2.0-rc.0`
+* we add a script in package.json to run the server `"serve": "webpack-dev-server"`
+* we run the serve command and lauch the app.
+* we clean our project and rerun the server. it serves the app. this is because webpack-dev-server does not save in hard drive. it runs inmemory. so does not need the dist folder. it is a development tool not ofr production. befoire releaseing we have to manualy run our build script.
+
+## Section 7 - React Specific Topics
+
+### Lecture 42 - React Route with Codeplitting
+
+* we will do code-splitting withy react router. this can increase performance with large react projects.
+* we will make a main bulndle with the parts the user sees at home page and separate bundle with the pages he sees when navigating.
+* to apply codesplitting we will not follow jsx but use plain js. essentialy we will work on plain js in way that React-route works with jsx translating it to plain js
+
+### Lecture 43 - Plain Routes with React Route Codeplitting
+
+* we end up replacing routes jsx
+
+```
+      <Route path="/" component={Home}>
+        <IndexRoute component={ArtistMain} />
+        <Route path="artists/new" component={ArtistCreate} />
+        <Route path="artists/:id" component={ArtistDetail} />
+        <Route path="artists/:id/edit" component={ArtistEdit} />
+      </Route>
+```
+
+* with a js object which we pass to the router. this object is what reactrouter buils from jsx. we do to pass system.import() in the getComponent function. this function gets a call back which will be called once the component is loaded. thats why we use system.import promise resolve (.then()) to call the callback. note that the callback expectes an error first and then the component. as component gets exported as default we use the module.default() method. module is the object returned when the system call promise resolves.
+
+```
+const componentRoutes = {
+  component: Home,
+  path: '/',
+  indexRoute: {component: ArtistMain},
+  childRoutes: [
+    {
+      path: 'artists/new',
+      getComponent(location, cb) {
+        System.import('./components/artists/ArtistCreate')
+        .then(module => cb(null, module.default));
+      }
+    },
+    {
+      path: 'artists/:id',
+      getComponent(location, cb) {
+        System.import('./components/artists/ArtistDetail')
+        .then(module => cb(null, module.default));
+      }
+    },
+    {
+      path: 'artists/:id/edit',
+      getComponent(location, cb) {
+        System.import('./components/artists/ArtistEdit')
+        .then(module => cb(null, module.default));
+      }
+    }
+  ]
+};
+
+const Routes = () => {
+  return (
+    <Router history={hashHistory} routes={componentRoutes} />
+  );
+};
+```
+
+* we cannot use dry code on this as the webpack tool looks for literaly system.import() calls to on demand do code splitting. it is a static analysis tool after all 
+
+## Section 8 - Webpack-Based Deployment for Static Sites
+
+### Lecture 44 - Deployment Options
+
+* when we deploy an app using webpack we should consider if have just a front end app (static) or a frontend+backend app (dynamic). webpack bundles and uses static assets only.
+	* Static Asset Providers: Github Pages, Amazon S3, Digital Ocean, MS Azure, Surge
+	* Server-Based Providers: Amazon EC2, Amazon ELB, Digital Ocean, Heroku, MS Azure
+
+### Lecture 45 - Getting Production Ready
+
+* we will tweak webpack to ge in line with deployment based or productionbased practices.
+* we add another plugin 
+
+```
+    new webpack.DefinePlugin({
+      'process.env.NODE_ENV': JSON.stringify(process.env.NODE_ENV)
+    });
+```
+
+* this plugin takes the proces.env>NODE_ENV setting we define in our window and inserti it in the bunddle so that react will now it is runnign in production or development environemnt. this will spped up react in production and add all the addtional debug info in development.
+
+* we modify our build script adding `    "build": "NODE_ENV=production npm run clean && webpack -p",` so that we build for production as we explicityly se the NODE_ENV. also we add the -p to tell webpack we want a production version of build. this minifies our output to compact our bundle
+
+### Lecture 46 - Deployment with [Surge](http://surge.sh/)
+
+* we globally install surge cli `npm install -g surge`
+* inside our project root we write `surge -p dist`
+* it deploys instantly
+* we can use custom names with CNAME param
+
+### Lecture 47 - Deployment with Github Pages
+
+* it requires a git repository and a master branch in the repo
+* if in our project we make a branch named *gh-pages* and we push our code to it, it will automatically be served at *https://<username>.github.io/<RepoName>*
+* github supports custom domains
+* the github repo must be public
+* we init git in the porject / add - commit the code/ add remote origin the github repo
+we checkout to a gh-pages branch `git checkout -b gh-pages`
+* push dist folder from this branch to github `git subtree push --prefix dist origin gh-pages`
+* we visit the page and our app is online
+* to automate deploy to github we add a script to our package.json `"deploy": "npm run build && git subtree push --prefix dist origin gh-pages"`
+
+### Lecture 48 - Deployment to AWS S3
+
+* AWS API keys are extremely security sensitive. DO NOT SHARE THESE KEYS
+* we will create API keys to delete them after
+* we install yet another global npm lib `npm install -g s3-website`
