@@ -568,3 +568,141 @@ we checkout to a gh-pages branch `git checkout -b gh-pages`
 * AWS API keys are extremely security sensitive. DO NOT SHARE THESE KEYS
 * we will create API keys to delete them after
 * we install yet another global npm lib `npm install -g s3-website`
+* we register and enter aws dashboard, under our name we go to my security credentials-> access keys-> createnew access key
+-> show the keys (DO NOT _ DO NOT Publish them on GITHUB)
+* once we finish the course we will delete them
+* we creTE A .ENV FILE IN PROJECT ROOT
+* aws will in this file to find the keys
+* add the two keys
+
+```
+AWS_ACCESS_KEY_ID=
+AWS_SECRET_ACCESS_KEY=
+```
+* we will use now the cli tool to creae a bucket at aws `s3-website create <projectname>`
+* to actually deploy we run `s3-website deploy dist` specifying the folder to deploy
+* we cp the link to chrome and see our app live
+* to redeploy after build we have to run the build script and the s3 deploy command
+* we clean up our project to avoid unecessary charging
+
+## Section 9 - Webpack Based Deployment for Dynamic Sites
+
+### Lecture 49 - Deployment on Servers
+
+* now our app will have allso a backend part
+* one approach is to have one url for the frontend and one url for the backend. our frontend will access the backend to get data
+* the frontend then is considered a static site as we have seen
+* many large applications are built this way
+* a second approach is a single server to host static assets and api logic. in that case node server will wrap all app. good for smaller apps. easier to deploy and maintain.
+* in second case node server is responsible for all actions
+* this is in conflict with the core of webpack. as webpack up to now was the centrel of all deployment and serving the app for development. to make webpack work with node we need to glue them together.
+* now to access the app we need to go to node and node will go to webpack to get the bundle
+
+### Lecture 50 - Node and Webpack Integration
+
+* node behaves differently if it runs on a local machine or in a deployment environment.
+* in development for app viewing or access of static resources node will use webpack middleware to pass request to webpack so that we dont have to run 2 servers
+* in production envirohment we dont run webpack. we tell node to serve these assets from the dist directory
+* this change of config betrween development and production is not optimal
+* we install express `npm install --save express`
+* we add a server.js file in project root
+* we add expres boilerplate code and run node server.js to start the server
+
+### Lecture 51 - Webpack Middleware in Development
+
+* middleware to webpack is an express middleware. we install it `npm install --save-dev webpack-dev-middleware`
+* we add in server.js
+
+```
+const webpackMiddleware = require('webpack-dev-middleware');
+const webpack = require('webpack');
+const webpackConfig = require('./webpack.config.js');
+```
+
+* webpack is the lib doint the bundling and translation in dev and config is its configuration
+
+* we integrate all to express with `app.use(webpackMiddleware(webpack(webpackConfig)));`
+
+* we run our server (use version 1.9.0 of middleware). our log looks like it runs webpack in the background. we access our localhost:3050 and the app is running ..
+
+### Lecture 52 - Webpack Middleware in Production
+
+* we want to avoid the middleware in production so we check the NODE_ENV environment param)
+* in developemnt we set the NODE_ENV in package.json. depending on the deployment env this var might need to be set in the environment params of the host
+* in production we dont eeven wan to load webpack related modules
+
+```
+if (process.env.NODE_ENV !== 'production') {
+	const webpackMiddleware = require('webpack-dev-middleware');
+	const webpack = require('webpack');
+	const webpackConfig = require('./webpack.config.js');
+	app.use(webpackMiddleware(webpack(webpackConfig)));
+}
+```
+
+* if we run in production we want to serve the dist folder assets ONLY. the second line is for security. if anyone tries to acces any route on our server serve the singlepage app instead. it is fully compatible with react router. only react router can play with routes
+
+```
+else {
+	app.use(express.static('dist'));
+	app.get('*', (req,res) => {
+		res.sendFile(path.join(__dirname, 'dist/index.html'));
+	});
+}
+```
+
+* we emulate rpoduction run with ` NODE_ENV=production node server.js
+`
+
+* app runs ok.
+* we need to compile and build before we deploy
+* when we expand our server we MUST put our server.js routes ABOVE the if statement, otherwise we will never see them because * overrules all
+* heroku and aws will want to set their port not 3050, so we need to make it parametrical `process.env.PORT || 3050`
+
+### Lecture 53 - Deploy to Heroku
+
+* we add a file named Procfile in project root there we add the command that will start our app once deployed to Heroku `web: node server.js`
+* we use the same git we used to deploy with github but we will work on master branch
+* we have heroku cli
+* we run heroku create in the project and then push master to heroku. our git must be only for the project. heroku sets env to production automatically
+* we run heroku open and see our app in browser
+* our deploy flow is
+
+```
+npm run build
+git add .
+git commit -m 'release xxxx'
+git push heroku master
+```
+
+### Lecture 54 - Deployment to AWS 
+
+* we will deploy to AWS elastic beanstalk service
+* we need to install elastic beanstalk cli to make deployments to aws elastic beanstalk
+* for linux
+	* install python 3 (if not available) `sudo apt-get install python3.4 or so`
+	* get installation script ` curl -O https://bootstrap.pypa.io/get-pip.py` preferably in a local dir
+	* run the script with python `python3 get-pip.py --user`
+	* add ~/.local/bin to the PATH . check for dir in ~
+	* add `export PATH=LOCAL_PATH:$PATH` in profile (no need we have it)
+	* check installation of pip with pip --version
+	* install cli `pip install awsebcli --upgrade --user`
+	* verify installation `eb --version`
+	* to upgrade `pip install awsebcli --upgrade --user`
+* we will start with `eb init`
+* insert aws login credentials (again createa anew access key in aws dashboard)
+* name your project, set node yes codcommit no and ssh yes
+* we need to make an app environment `eb create`
+* in our case it didn;t ask for git.
+
+### Lecture 55 - More on AWS Deployment
+
+* deploy takes a lot of time...
+* we open our up with `eb-open` ERROR
+* in aws console -> select the region we deployed -> select elastic benastalk -> find ow app -> see the error -> see the logs
+* it looks for webpack-dev-server .... so it thinks it runs in dev AKA NODE_ENV is not set properly
+* in command line we se it properly `eb setenv NODE_ENV=production`
+* in dashboard we see many ionfo about our service. instances used etc.
+* OUR APP is LIVE in AWS
+* we now run `eb terminate` to delete it to avoid unnecessary charges
+* we also delete our keys to the app
